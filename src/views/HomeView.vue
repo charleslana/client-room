@@ -3,10 +3,13 @@
     <h1>HomeView</h1>
     <input
       v-model="playerName"
-      ref="nameInput"
+      ref="playNameRef"
       placeholder="Digite seu nome"
       @keydown.enter.prevent="joinRoom"
     />
+    <div>
+      <small v-if="messageFailed">{{ messageFailed }}</small>
+    </div>
     <button @click="joinRoom">Entrar</button>
   </div>
 </template>
@@ -20,26 +23,35 @@ import socket from '@/config/socket';
 const playerName = ref('');
 const route = useRouter();
 const playerStore = usePlayerStore();
-const nameInput: Ref<HTMLElement | null> = ref(null);
-
-const joinRoom = () => {
-  socket.emit('join', playerName.value);
-
-  socket.on('join-response', (response: string) => {
-    if (response === 'success') {
-      playerStore.setPlayerName(playerName.value);
-      route.replace({ name: 'room' });
-    } else {
-      console.log('Falha ao entrar na sala');
-    }
-  });
-};
+const playNameRef: Ref<HTMLElement | null> = ref(null);
+const messageFailed = ref('');
 
 onMounted(() => {
-  if (nameInput.value) {
-    nameInput.value.focus();
+  if (playNameRef.value) {
+    playNameRef.value.focus();
   }
+});
+
+const joinRoom = (): void => {
+  if (playerName.value.trim() === '') {
+    return;
+  }
+  messageFailed.value = '';
+  socket.emit('join', playerName.value.trim());
+};
+
+socket.on('join-success', () => {
+  playerStore.setPlayerName(playerName.value.trim());
+  route.replace({ name: 'room' });
+});
+
+socket.on('user-join-failed', (message: string) => {
+  messageFailed.value = message;
 });
 </script>
 
-<style scoped></style>
+<style scoped>
+small {
+  color: red;
+}
+</style>

@@ -8,9 +8,26 @@
     <br />
     <div class="flex">
       <div class="create-room">
-        <h1>Criar sala</h1>
-        <input v-model="newRoom" placeholder="Nome da Sala" @keydown.enter.prevent="createRoom" />
-        <button @click="createRoom">Criar Sala</button>
+        <div class="flex flex-column">
+          <div>
+            <h1>Criar sala</h1>
+            <input
+              v-model="newRoom"
+              placeholder="Nome da Sala"
+              @keydown.enter.prevent="createRoom"
+            />
+            <div>
+              <small v-if="messageFailed">{{ messageFailed }}</small>
+            </div>
+            <button @click="createRoom">Criar Sala</button>
+          </div>
+          <div class="rooms">
+            <div v-for="(room, index) in rooms" :key="index" class="room-card">
+              <h2>{{ room }}</h2>
+              <button @click="joinRoom(room)">Entrar</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="user-list">
         <h1>Lista de usuários ({{ players.length }})</h1>
@@ -20,9 +37,9 @@
       </div>
       <div class="user-message">
         <h1>Mensagens do chat</h1>
-        <div class="chat-messages" ref="messagesRef">
-          <div v-for="message in chatMessages" :key="message.id">
-            <strong>{{ message.playerName }}:</strong> {{ message.text }}
+        <div class="chat-messages" ref="chatMessagesRef">
+          <div v-for="(message, index) in chatMessages" :key="index">
+            <strong>{{ message.playerName }}:</strong> {{ message.message }}
           </div>
         </div>
         <input
@@ -41,52 +58,59 @@
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRouter } from 'vue-router';
 import socket from '@/config/socket';
-import { onMounted, ref } from 'vue';
+import { nextTick, onMounted, ref } from 'vue';
+import type { IChat } from '@/interface/IChat';
 
 const playerStore = usePlayerStore();
 const playerName = playerStore.playerName;
 const router = useRouter();
 const players = ref<string[]>([]);
 const message = ref('');
-const messagesRef = ref<HTMLElement | null>(null);
-const chatMessages = ref<ChatMessage[]>([]);
+const chatMessagesRef = ref<HTMLElement | null>(null);
+const chatMessages = ref<IChat[]>([]);
 const currentRoom = ref('Main Room');
 const newRoom = ref('');
+const rooms = ref<string[]>([]);
+const messageFailed = ref('');
 
-interface ChatMessage {
-  id: number;
-  playerName: string;
-  text: string;
-}
+onMounted(() => {
+  if (playerName) {
+    socket.emit('get-players-main-room');
+    socket.emit('get-chat-messages-main-room');
+    socket.emit('get-rooms');
+  }
+});
 
-const leaveRoom = () => {
-  socket.emit('leave-main-room', playerName);
-  socket.emit('logout');
-  router.push({ name: 'home' });
+const scrollChat = (): void => {
+  nextTick(() => {
+    if (chatMessagesRef.value) {
+      chatMessagesRef.value.scrollTop = chatMessagesRef.value.scrollHeight;
+    }
+  });
 };
 
-const sendMessage = () => {
+const leaveRoom = (): void => {
+  socket.emit('leave-main-room');
+};
+
+const sendMessage = (): void => {
   if (message.value) {
-    if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
-    }
-    const chatMessage: ChatMessage = {
-      id: 0,
-      playerName: playerName,
-      text: message.value
-    };
-    socket.emit('send-message-main-room', chatMessage);
+    socket.emit('send-message-main-room', message.value);
     message.value = '';
+    scrollChat();
   }
 };
 
-const createRoom = () => {
+const createRoom = (): void => {
   if (newRoom.value.trim() === '') {
     return;
   }
-  socket.emit('leave-main-room', playerName);
-  socket.emit('create-room', newRoom.value, playerName);
-  router.replace({ name: 'room-name', params: { roomName: newRoom.value } });
+  messageFailed.value = '';
+  socket.emit('create-room', newRoom.value);
+};
+
+const joinRoom = (room: string): void => {
+  socket.emit('join-room', room);
 };
 
 window.addEventListener('load', () => {
@@ -97,19 +121,29 @@ socket.on('players-main-room', (playerList: string[]) => {
   players.value = playerList;
 });
 
-socket.on('receive-message-main-room', (receivedMessage: ChatMessage) => {
-  chatMessages.value.push(receivedMessage);
-
-  if (messagesRef.value) {
-    messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
-  }
+socket.on('leave-main-room-success', () => {
+  router.replace({ name: 'home' });
 });
 
-onMounted(() => {
-  if (playerName) {
-    socket.emit('get-players-main-room');
-    socket.emit('get-chat-messages-main-room', playerName);
-  }
+socket.on('receive-message-main-room', (chat: IChat) => {
+  chatMessages.value.push(chat);
+  scrollChat();
+});
+
+socket.on('room-created', (roomName: string) => {
+  router.replace({ name: 'room-name', params: { roomName } });
+});
+
+socket.on('room-creation-failed', (message: string) => {
+  messageFailed.value = message;
+});
+
+socket.on('rooms', (roomList: string[]) => {
+  rooms.value = roomList;
+});
+
+socket.on('join-room-success', (roomName: string) => {
+  router.replace({ name: 'room-name', params: { roomName: roomName } });
 });
 </script>
 
@@ -140,5 +174,25 @@ onMounted(() => {
   overflow-y: scroll;
   scroll-behavior: smooth;
   border: 1px solid blue;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.rooms {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.room-card {
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin: 10px;
+  border-radius: 5px;
+}
+
+small {
+  color: red;
 }
 </style>
