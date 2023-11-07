@@ -22,9 +22,15 @@
             <button @click="createRoom">Criar Sala</button>
           </div>
           <div class="rooms">
-            <div v-for="(room, index) in rooms" :key="index" class="room-card">
+            <div
+              v-for="(room, index) in rooms"
+              :key="index"
+              class="room-card bg-green"
+              :class="{ 'bg-red': room.players.length >= 2 }"
+            >
               <h2>{{ room.name }}</h2>
-              <button @click="joinRoom(room.name)">Entrar</button>
+              <span v-if="room.players.length >= 2">Sala cheia</span>
+              <button v-else @click="joinRoom(room.name)">Entrar</button>
             </div>
           </div>
         </div>
@@ -206,5 +212,19 @@ socket.on('join-room-success', (roomName: string) => {
 
 small {
   color: red;
+}
+
+.bg-green {
+  background-color: green;
+  color: white;
+}
+
+.bg-red {
+  background-color: red;
+  color: white;
+}
+
+span {
+  color: white;
 }
 </style>
