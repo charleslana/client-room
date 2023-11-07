@@ -23,8 +23,8 @@
           </div>
           <div class="rooms">
             <div v-for="(room, index) in rooms" :key="index" class="room-card">
-              <h2>{{ room }}</h2>
-              <button @click="joinRoom(room)">Entrar</button>
+              <h2>{{ room.name }}</h2>
+              <button @click="joinRoom(room.name)">Entrar</button>
             </div>
           </div>
         </div>
@@ -32,7 +32,7 @@
       <div class="user-list">
         <h1>Lista de usuários ({{ players.length }})</h1>
         <ul>
-          <li v-for="player in players" :key="player">{{ player }}</li>
+          <li v-for="(player, index) in players" :key="index">{{ player.name }}</li>
         </ul>
       </div>
       <div class="user-message">
@@ -58,19 +58,21 @@
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRouter } from 'vue-router';
 import socket from '@/config/socket';
-import { nextTick, onMounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import type { IChat } from '@/interface/IChat';
+import type { IRoom } from '@/interface/IRoom';
+import type { IPlayer } from '@/interface/IPlayer';
 
 const playerStore = usePlayerStore();
 const playerName = playerStore.playerName;
 const router = useRouter();
-const players = ref<string[]>([]);
+const players = ref<IPlayer[]>([]);
 const message = ref('');
 const chatMessagesRef = ref<HTMLElement | null>(null);
 const chatMessages = ref<IChat[]>([]);
 const currentRoom = ref('Main Room');
 const newRoom = ref('');
-const rooms = ref<string[]>([]);
+const rooms = ref<IRoom[]>([]);
 const messageFailed = ref('');
 
 onMounted(() => {
@@ -79,6 +81,20 @@ onMounted(() => {
     socket.emit('get-chat-messages-main-room');
     socket.emit('get-rooms');
   }
+});
+
+onUnmounted(() => {
+  socket.removeListener('rooms');
+  socket.removeListener('players-main-room');
+  socket.removeListener('receive-message-main-room');
+  socket.removeListener('leave-main-room-success');
+  socket.removeListener('room-created');
+  socket.removeListener('room-creation-failed');
+  socket.removeListener('join-room-success');
+});
+
+window.addEventListener('load', () => {
+  router.push({ name: 'home' });
 });
 
 const scrollChat = (): void => {
@@ -113,12 +129,8 @@ const joinRoom = (room: string): void => {
   socket.emit('join-room', room);
 };
 
-window.addEventListener('load', () => {
-  router.push({ name: 'home' });
-});
-
-socket.on('players-main-room', (playerList: string[]) => {
-  players.value = playerList;
+socket.on('players-main-room', (room: IRoom) => {
+  players.value = room.players;
 });
 
 socket.on('leave-main-room-success', () => {
@@ -138,7 +150,7 @@ socket.on('room-creation-failed', (message: string) => {
   messageFailed.value = message;
 });
 
-socket.on('rooms', (roomList: string[]) => {
+socket.on('rooms', (roomList: IRoom[]) => {
   rooms.value = roomList;
 });
 

@@ -15,7 +15,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, type Ref } from 'vue';
+import { onMounted, onUnmounted, ref, type Ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { usePlayerStore } from '@/stores/playerStore';
 import socket from '@/config/socket';
@@ -30,6 +30,11 @@ onMounted(() => {
   if (playNameRef.value) {
     playNameRef.value.focus();
   }
+});
+
+onUnmounted(() => {
+  socket.removeListener('join-success');
+  socket.removeListener('user-join-failed');
 });
 
 const joinRoom = (): void => {

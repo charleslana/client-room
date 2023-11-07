@@ -11,10 +11,15 @@
 import router from '@/router';
 import { usePlayerStore } from '@/stores/playerStore';
 import socket from '@/config/socket';
+import { onUnmounted } from 'vue';
 
 const playerStore = usePlayerStore();
 const playerName = playerStore.playerName;
 const currentRoom = router.currentRoute.value.params.roomName;
+
+onUnmounted(() => {
+  socket.removeListener('leave-room-success');
+});
 
 window.addEventListener('load', () => {
   router.push({ name: 'home' });
