@@ -1,8 +1,12 @@
 <template>
   <div>
     <h1>RoomView</h1>
-    <p>Jogador: {{ playerName }}</p>
-    <p>Sala: {{ currentRoom }}</p>
+    <p>
+      Jogador: <b>{{ playerName }}</b>
+    </p>
+    <p>
+      Sala: <b>{{ currentRoom }}</b>
+    </p>
     <button @click="leaveRoom">Sair</button>
     <br />
     <br />
@@ -38,7 +42,13 @@
       <div class="user-list">
         <h1>Lista de usuários ({{ players.length }})</h1>
         <ul>
-          <li v-for="(player, index) in players" :key="index">{{ player.name }}</li>
+          <li
+            v-for="(player, index) in players"
+            :key="index"
+            :class="{ 'f-bold': player.name === playerName }"
+          >
+            {{ player.name }}
+          </li>
         </ul>
       </div>
       <div class="user-message">
@@ -166,38 +176,6 @@ socket.on('join-room-success', (roomName: string) => {
 </script>
 
 <style scoped>
-.flex {
-  display: flex;
-}
-
-.user-list {
-  width: 100%;
-  border: 1px solid green;
-}
-
-.create-room {
-  width: 100%;
-  border: 1px solid gray;
-}
-
-.user-message {
-  width: 100%;
-  border: 1px solid orange;
-  display: flex;
-  flex-direction: column;
-}
-
-.chat-messages {
-  height: 300px;
-  overflow-y: scroll;
-  scroll-behavior: smooth;
-  border: 1px solid blue;
-}
-
-.flex-column {
-  flex-direction: column;
-}
-
 .rooms {
   display: flex;
   flex-wrap: wrap;

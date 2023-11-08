@@ -3,5 +3,40 @@
 *::after {
   box-sizing: border-box;
   margin: 0;
-  /* font-weight: normal; */
+}
+
+.flex {
+  display: flex;
+}
+
+.user-list {
+  width: 100%;
+  border: 1px solid green;
+}
+
+.create-room {
+  width: 100%;
+  border: 1px solid gray;
+}
+
+.user-message {
+  width: 100%;
+  border: 1px solid orange;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-messages {
+  height: 300px;
+  overflow-y: scroll;
+  scroll-behavior: smooth;
+  border: 1px solid blue;
+}
+
+.flex-column {
+  flex-direction: column;
+}
+
+.f-bold {
+  font-weight: bold;
 }
