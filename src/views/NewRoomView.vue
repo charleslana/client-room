@@ -7,6 +7,7 @@
     <p>
       Sala:
       <b>{{ $route.params.roomName }} {{ room.password ? `(senha: ${room.password})` : '' }}</b>
+      <button v-if="player.isRoomOwner" @click="changeRoomPassword">configurar senha</button>
     </p>
     <p>
       Dono da sala: <b>{{ player.isRoomOwner ? 'sim' : 'não' }}</b>
@@ -83,6 +84,7 @@ onUnmounted(() => {
   socket.removeListener('players-in-room');
   socket.removeListener('receive-message-in-room');
   socket.removeListener('leave-room-automatically');
+  socket.removeListener('room-info');
 });
 
 window.addEventListener('load', () => {
@@ -113,6 +115,18 @@ const removePlayer = (playerName: string): void => {
   socket.emit('remove-room-player', roomName, playerName);
 };
 
+const changeRoomPassword = (): void => {
+  if (room.value) {
+    const newPassword = window.prompt(
+      'digite a senha (max. 6 caracteres) (deixe em branco para remover a senha):',
+      room.value.password
+    );
+    if (newPassword !== null && newPassword !== room.value.password) {
+      socket.emit('change-room-password', roomName, newPassword);
+    }
+  }
+};
+
 socket.on('leave-room-success', () => {
   router.replace({ name: 'room' });
 });
@@ -135,6 +149,10 @@ socket.on('leave-room-automatically', (name: string) => {
   if (name === playerName) {
     leaveRoom();
   }
+});
+
+socket.on('room-info', (iRoom: IRoom) => {
+  room.value = iRoom;
 });
 </script>
 

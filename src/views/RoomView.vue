@@ -20,7 +20,11 @@
               placeholder="Nome da Sala"
               @keydown.enter.prevent="createRoom"
             />
-            <input v-model="password" placeholder="Senha" />
+            <input
+              v-model="password"
+              placeholder="Senha (max. 6 caracteres)"
+              @keydown.enter.prevent="createRoom"
+            />
             <div>
               <small v-if="messageFailed">{{ messageFailed }}</small>
             </div>
