@@ -1,11 +1,12 @@
 <template>
-  <div v-if="player">
+  <div v-if="player && room">
     <h1>NewRoomView</h1>
     <p>
       Jogador: <b>{{ playerName }}</b>
     </p>
     <p>
-      Sala: <b>{{ $route.params.roomName }}</b>
+      Sala:
+      <b>{{ $route.params.roomName }} {{ room.password ? `(senha: ${room.password})` : '' }}</b>
     </p>
     <p>
       Dono da sala: <b>{{ player.isRoomOwner ? 'sim' : 'não' }}</b>
@@ -22,7 +23,13 @@
             :key="index"
             :class="{ 'f-bold': p.name === player.name }"
           >
-            {{ p.name }} {{ p.isRoomOwner ? '(líder)' : '' }}
+            {{ p.name }} {{ p.isRoomOwner ? '(dono)' : '' }}
+            <button
+              v-if="player.isRoomOwner && p.name !== player.name"
+              @click="removePlayer(p.name)"
+            >
+              remover
+            </button>
           </li>
         </ul>
       </div>
@@ -52,11 +59,13 @@ import socket from '@/config/socket';
 import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import type { IPlayer } from '@/interface/IPlayer';
 import type { IChat } from '@/interface/IChat';
+import type { IRoom } from '@/interface/IRoom';
 
 const playerStore = usePlayerStore();
 const playerName = playerStore.playerName;
 const roomName = router.currentRoute.value.params.roomName;
 const player = ref<IPlayer>();
+const room = ref<IRoom>();
 const players = ref<IPlayer[]>([]);
 const chatMessagesRef = ref<HTMLElement | null>(null);
 const chatMessages = ref<IChat[]>([]);
@@ -73,6 +82,7 @@ onUnmounted(() => {
   socket.removeListener('user-room-info');
   socket.removeListener('players-in-room');
   socket.removeListener('receive-message-in-room');
+  socket.removeListener('leave-room-automatically');
 });
 
 window.addEventListener('load', () => {
@@ -99,12 +109,17 @@ const sendMessage = (): void => {
   }
 };
 
+const removePlayer = (playerName: string): void => {
+  socket.emit('remove-room-player', roomName, playerName);
+};
+
 socket.on('leave-room-success', () => {
   router.replace({ name: 'room' });
 });
 
-socket.on('user-room-info', (iPlayer: IPlayer) => {
+socket.on('user-room-info', (iPlayer: IPlayer, iRoom: IRoom) => {
   player.value = iPlayer;
+  room.value = iRoom;
 });
 
 socket.on('players-in-room', (playerList: IPlayer[]) => {
@@ -114,6 +129,12 @@ socket.on('players-in-room', (playerList: IPlayer[]) => {
 socket.on('receive-message-in-room', (chat: IChat) => {
   chatMessages.value.push(chat);
   scrollChat();
+});
+
+socket.on('leave-room-automatically', (name: string) => {
+  if (name === playerName) {
+    leaveRoom();
+  }
 });
 </script>
 

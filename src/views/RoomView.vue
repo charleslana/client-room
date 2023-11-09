@@ -20,6 +20,7 @@
               placeholder="Nome da Sala"
               @keydown.enter.prevent="createRoom"
             />
+            <input v-model="password" placeholder="Senha" />
             <div>
               <small v-if="messageFailed">{{ messageFailed }}</small>
             </div>
@@ -32,9 +33,10 @@
               class="room-card bg-green"
               :class="{ 'bg-red': room.players.length >= 2 }"
             >
+              <img v-if="room.password" :src="images.lockImage" alt="Ícone" class="room-icon" />
               <h2>{{ room.name }}</h2>
               <span v-if="room.players.length >= 2">Sala cheia</span>
-              <button v-else @click="joinRoom(room.name)">Entrar</button>
+              <button v-else @click="joinRoom(room.name, room.password)">Entrar</button>
             </div>
           </div>
         </div>
@@ -78,6 +80,7 @@ import { nextTick, onMounted, onUnmounted, ref } from 'vue';
 import type { IChat } from '@/interface/IChat';
 import type { IRoom } from '@/interface/IRoom';
 import type { IPlayer } from '@/interface/IPlayer';
+import images from '@/data/imageData';
 
 const playerStore = usePlayerStore();
 const playerName = playerStore.playerName;
@@ -88,6 +91,7 @@ const chatMessagesRef = ref<HTMLElement | null>(null);
 const chatMessages = ref<IChat[]>([]);
 const currentRoom = ref('Main Room');
 const newRoom = ref('');
+const password = ref('');
 const rooms = ref<IRoom[]>([]);
 const messageFailed = ref('');
 
@@ -107,6 +111,7 @@ onUnmounted(() => {
   socket.removeListener('room-created');
   socket.removeListener('room-creation-failed');
   socket.removeListener('join-room-success');
+  socket.removeListener('join-room-error');
 });
 
 window.addEventListener('load', () => {
@@ -138,11 +143,18 @@ const createRoom = (): void => {
     return;
   }
   messageFailed.value = '';
-  socket.emit('create-room', newRoom.value);
+  socket.emit('create-room', newRoom.value.trim(), password.value.trim());
 };
 
-const joinRoom = (room: string): void => {
-  socket.emit('join-room', room);
+const joinRoom = (roomName: string, password?: string): void => {
+  if (password) {
+    const password = window.prompt('A sala tem senha, digite a senha:');
+    if (password !== null) {
+      socket.emit('join-room', roomName, password);
+    }
+    return;
+  }
+  socket.emit('join-room', roomName);
 };
 
 socket.on('players-main-room', (room: IRoom) => {
@@ -173,6 +185,10 @@ socket.on('rooms', (roomList: IRoom[]) => {
 socket.on('join-room-success', (roomName: string) => {
   router.replace({ name: 'room-name', params: { roomName: roomName } });
 });
+
+socket.on('join-room-error', (message: string) => {
+  alert(message);
+});
 </script>
 
 <style scoped>
@@ -186,6 +202,15 @@ socket.on('join-room-success', (roomName: string) => {
   padding: 10px;
   margin: 10px;
   border-radius: 5px;
+  position: relative;
+}
+
+.room-icon {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 12px;
+  height: 12px;
 }
 
 small {
