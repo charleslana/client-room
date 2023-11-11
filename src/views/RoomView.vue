@@ -26,12 +26,23 @@
               @keydown.enter.prevent="createRoom"
             />
             <div>
-              <small v-if="messageFailed">{{ messageFailed }}</small>
+              <small class="red" v-if="messageFailed">{{ messageFailed }}</small>
             </div>
             <button @click="createRoom">Criar Sala</button>
           </div>
+          <br />
+          <h1>Salas ({{ rooms.length }})</h1>
+          <input
+            v-model="roomNameFilter"
+            placeholder="Buscar sala por nome"
+            @keydown.enter.prevent="filterRoom"
+          />
+          <button v-if="!roomNameFiltered" @click="filterRoom">Filtrar</button>
+          <button v-else @click="clearFilter">Limpar</button>
           <div class="rooms">
+            <small v-if="rooms.length === 0">Nenhuma sala disponível</small>
             <div
+              v-else
               v-for="(room, index) in rooms"
               :key="index"
               class="room-card bg-green"
@@ -98,12 +109,14 @@ const newRoom = ref('');
 const password = ref('');
 const rooms = ref<IRoom[]>([]);
 const messageFailed = ref('');
+const roomNameFilter = ref('');
+const roomNameFiltered = ref(false);
 
 onMounted(() => {
   if (playerName) {
     socket.emit('get-players-main-room');
     socket.emit('get-chat-messages-main-room');
-    socket.emit('get-rooms');
+    getRooms();
   }
 });
 
@@ -116,11 +129,19 @@ onUnmounted(() => {
   socket.removeListener('room-creation-failed');
   socket.removeListener('join-room-success');
   socket.removeListener('join-room-error');
+  socket.removeListener('filtered-rooms');
 });
 
 window.addEventListener('load', () => {
   router.push({ name: 'home' });
 });
+
+const getRooms = (): void => {
+  socket.emit('get-rooms');
+  socket.on('rooms', (roomList: IRoom[]) => {
+    rooms.value = roomList;
+  });
+};
 
 const scrollChat = (): void => {
   nextTick(() => {
@@ -161,6 +182,19 @@ const joinRoom = (roomName: string, password?: string): void => {
   socket.emit('join-room', roomName);
 };
 
+const filterRoom = (): void => {
+  if (roomNameFilter.value.trim() !== '') {
+    roomNameFiltered.value = true;
+    socket.emit('get-filter-room', roomNameFilter.value);
+  }
+};
+
+const clearFilter = (): void => {
+  roomNameFilter.value = '';
+  roomNameFiltered.value = false;
+  getRooms();
+};
+
 socket.on('players-main-room', (room: IRoom) => {
   players.value = room.players;
 });
@@ -193,6 +227,11 @@ socket.on('join-room-success', (roomName: string) => {
 socket.on('join-room-error', (message: string) => {
   alert(message);
 });
+
+socket.on('filtered-rooms', (roomList: IRoom[]) => {
+  socket.removeListener('rooms');
+  rooms.value = roomList;
+});
 </script>
 
 <style scoped>
@@ -217,7 +256,7 @@ socket.on('join-room-error', (message: string) => {
   height: 12px;
 }
 
-small {
+.red {
   color: red;
 }
 
