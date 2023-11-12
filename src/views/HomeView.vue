@@ -1,14 +1,15 @@
 <template>
   <div>
-    <h1>HomeView</h1>
+    <h1>Entrar</h1>
     <input
       v-model="playerName"
       ref="playNameRef"
-      placeholder="Digite seu nome"
+      placeholder="Nome (max. 15 caracteres)"
       @keydown.enter.prevent="joinRoom"
     />
+    <small>O nome do usuário deve ser apenas letras e números.</small>
     <div>
-      <small v-if="messageFailed">{{ messageFailed }}</small>
+      <small class="red" v-if="messageFailed">{{ messageFailed }}</small>
     </div>
     <button @click="joinRoom">Entrar</button>
   </div>
@@ -42,12 +43,13 @@ const joinRoom = (): void => {
     return;
   }
   messageFailed.value = '';
+  socket.connect();
   socket.emit('join', playerName.value.trim());
 };
 
 socket.on('join-success', () => {
   playerStore.setPlayerName(playerName.value.trim());
-  route.replace({ name: 'room' });
+  route.replace({ name: 'lobby' });
 });
 
 socket.on('user-join-failed', (message: string) => {
@@ -55,8 +57,4 @@ socket.on('user-join-failed', (message: string) => {
 });
 </script>
 
-<style scoped>
-small {
-  color: red;
-}
-</style>
+<style scoped></style>

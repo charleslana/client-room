@@ -1,7 +1,7 @@
 import BoardView from '@/views/BoardView.vue';
 import HomeView from '@/views/HomeView.vue';
+import LobbyView from '@/views/LobbyView.vue';
 import RoomView from '@/views/RoomView.vue';
-import NewRoomView from '@/views/NewRoomView.vue';
 import { createRouter, createWebHistory } from 'vue-router';
 
 const router = createRouter({
@@ -13,14 +13,14 @@ const router = createRouter({
       component: HomeView
     },
     {
-      path: '/room',
-      name: 'room',
-      component: RoomView
+      path: '/lobby',
+      name: 'lobby',
+      component: LobbyView
     },
     {
       path: '/room/:roomName',
       name: 'room-name',
-      component: NewRoomView
+      component: RoomView
     },
     {
       path: '/board',
