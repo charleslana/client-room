@@ -63,6 +63,7 @@
             :class="{ 'f-bold': player.name === playerName }"
           >
             {{ player.name }}
+            <button v-if="player.name !== playerName" @click="openPrivateChat(player)">PM</button>
           </li>
         </ul>
       </div>
@@ -82,6 +83,24 @@
         <button @click="sendMessage">Enviar</button>
       </div>
     </div>
+    <div v-if="privateChatOpen && selectedPlayer" class="private-chat-modal">
+      <div class="header">
+        <span>Chat Privado com {{ selectedPlayer.name }}</span>
+        <button @click="togglePrivateChat">
+          {{ privateChatMinimized ? '+' : '-' }}
+        </button>
+        <button @click="closePrivateChat">Fechar</button>
+      </div>
+      <div v-if="!privateChatMinimized" class="input-container">
+        <input
+          v-model="privateChatMessage"
+          placeholder="Digite uma mensagem"
+          ref="privateChatMessageRef"
+          @keydown.enter.prevent="sendPrivateMessage"
+        />
+        <button @click="sendPrivateMessage">Enviar</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -89,7 +108,7 @@
 import { usePlayerStore } from '@/stores/playerStore';
 import { useRouter } from 'vue-router';
 import socket from '@/config/socket';
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, type Ref } from 'vue';
 import type { IChat } from '@/interface/IChat';
 import type { IRoom } from '@/interface/IRoom';
 import type { IPlayer } from '@/interface/IPlayer';
@@ -108,6 +127,11 @@ const rooms = ref<IRoom[]>([]);
 const messageFailed = ref('');
 const roomNameFilter = ref('');
 const roomNameFiltered = ref(false);
+const privateChatOpen = ref(false);
+const selectedPlayer = ref<IPlayer | null>(null);
+const privateChatMessage = ref('');
+const privateChatMinimized = ref(false);
+const privateChatMessageRef: Ref<HTMLElement | null> = ref(null);
 
 onMounted(() => {
   if (playerName) {
@@ -127,6 +151,7 @@ onUnmounted(() => {
   socket.removeListener('join-room-success');
   socket.removeListener('join-room-error');
   socket.removeListener('filtered-rooms');
+  socket.removeListener('receive-private-message');
 });
 
 window.addEventListener('load', () => {
@@ -192,6 +217,37 @@ const clearFilter = (): void => {
   getRooms();
 };
 
+const openPrivateChat = (player: IPlayer): void => {
+  selectedPlayer.value = player;
+  privateChatOpen.value = true;
+  nextTick(() => {
+    if (privateChatMessageRef.value) {
+      privateChatMessageRef.value.focus();
+    }
+  });
+};
+
+const closePrivateChat = (): void => {
+  selectedPlayer.value = null;
+  privateChatOpen.value = false;
+};
+
+const sendPrivateMessage = (): void => {
+  if (selectedPlayer.value && privateChatMessage.value.trim() !== '') {
+    chatMessages.value.push({
+      playerName: playerName,
+      message: `para ${selectedPlayer.value.name}: ${privateChatMessage.value} (PM)`
+    });
+    socket.emit('send-private-message', selectedPlayer.value.id, privateChatMessage.value);
+    privateChatMessage.value = '';
+    closePrivateChat();
+  }
+};
+
+const togglePrivateChat = (): void => {
+  privateChatMinimized.value = !privateChatMinimized.value;
+};
+
 socket.on('players-lobby-room', (room: IRoom) => {
   players.value = room.players;
 });
@@ -230,6 +286,14 @@ socket.on('filtered-rooms', (roomList: IRoom[]) => {
   socket.removeListener('rooms');
   rooms.value = roomList;
 });
+
+socket.on('receive-private-message', (sendPlayer: string, message: string) => {
+  chatMessages.value.push({
+    playerName: sendPlayer,
+    message: `para ${playerName}: ${message} (PM)`
+  });
+  scrollChat();
+});
 </script>
 
 <style scoped>
@@ -264,7 +328,39 @@ socket.on('filtered-rooms', (roomList: IRoom[]) => {
   color: white;
 }
 
-span {
+.rooms span {
   color: white;
+}
+
+.private-chat-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border: 1px solid #ccc;
+  padding: 10px;
+  max-width: 400px;
+  width: 100%;
+}
+
+.private-chat-modal .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 5px;
+}
+
+.private-chat-modal button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 5px;
+}
+
+li {
+  padding: 2px;
+  list-style: none;
 }
 </style>
