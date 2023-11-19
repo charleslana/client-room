@@ -16,6 +16,7 @@
             </div>
           </div>
         </div>
+        <div>nome do adversário</div>
       </div>
     </div>
     <div class="half">
@@ -70,6 +71,7 @@
           </div>
         </div>
         <div class="hand-detail">
+          <div>Charles</div>
           <div class="stamina">1</div>
           <div><button>Finalizar turno</button></div>
         </div>
@@ -181,9 +183,9 @@
 }
 
 .cube {
-  border: 1px solid red;
+  border: 1px solid purple;
   padding: 20px;
-  color: red;
+  color: purple;
 }
 
 .progress {

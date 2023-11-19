@@ -1,4 +1,4 @@
-import BoardView from '@/views/BoardView.vue';
+import BattleView from '@/views/BattleView.vue';
 import HomeView from '@/views/HomeView.vue';
 import LobbyView from '@/views/LobbyView.vue';
 import RoomView from '@/views/RoomView.vue';
@@ -23,14 +23,19 @@ const router = createRouter({
       component: RoomView
     },
     {
-      path: '/board',
-      name: 'board',
-      component: BoardView
+      path: '/battle',
+      name: 'battle',
+      component: BattleView
     },
     {
       path: '/model',
       name: 'model',
       component: () => import('@/views/ModelView.vue')
+    },
+    {
+      path: '/:catchAll(.*)',
+      name: 'not-found',
+      component: () => import('../views/NotFoundView.vue')
     }
   ]
 });
