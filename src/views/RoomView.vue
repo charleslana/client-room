@@ -1,17 +1,33 @@
 <template>
   <div v-if="player && room">
-    <h1>{{ $route.params.roomName }}</h1>
-    <p>
-      Jogador: <b>{{ playerName }}</b>
-    </p>
-    <p>
-      Senha: <b>{{ room.password ? `(senha: ${room.password})` : '' }}</b>
-      <button v-if="player.isRoomOwner" @click="changeRoomPassword">configurar senha</button>
-    </p>
-    <p>
-      Dono da sala: <b>{{ player.isRoomOwner ? 'sim' : 'não' }}</b>
-    </p>
-    <button @click="leaveRoom">Sair</button>
+    <div class="flex custom-flex">
+      <div>
+        <h1>{{ $route.params.roomName }}</h1>
+        <p>
+          Jogador: <b>{{ playerName }}</b>
+        </p>
+        <p>
+          Senha: <b>{{ room.password ? `(senha: ${room.password})` : '' }}</b>
+          <button v-if="player.isRoomOwner" @click="changeRoomPassword">configurar senha</button>
+        </p>
+        <p>
+          Dono da sala: <b>{{ player.isRoomOwner ? 'sim' : 'não' }}</b>
+        </p>
+        <button @click="leaveRoom">Sair</button>
+      </div>
+      <div>
+        Iniciar batalha contra:
+        {{ opponent && room.players.length > 1 ? opponent.name : 'esperando jogador' }}
+        <button
+          v-if="room.players.length === 1 || (player.isRoomOwner && opponent && !opponent.hasReady)"
+        >
+          Aguardando oponente
+        </button>
+        <button v-else-if="player.isRoomOwner" @click="startBattle">Iniciar partida</button>
+        <button v-else-if="!isReady" @click="togglePlayerReady">Estou pronto</button>
+        <button v-else @click="togglePlayerReady">Cancelar</button>
+      </div>
+    </div>
     <br />
     <br />
     <div class="flex">
@@ -34,7 +50,7 @@
         </ul>
       </div>
       <div class="user-message">
-        <h1>Mensagens do chat</h1>
+        <h1>Mensagens da sala</h1>
         <div class="chat-messages" ref="chatMessagesRef">
           <div v-for="(message, index) in chatMessages" :key="index">
             <strong>{{ message.playerName }}:</strong> {{ message.message }}
@@ -56,7 +72,7 @@
 import router from '@/router';
 import { usePlayerStore } from '@/stores/playerStore';
 import socket from '@/config/socket';
-import { nextTick, onMounted, onUnmounted, ref } from 'vue';
+import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { IPlayer } from '@/interface/IPlayer';
 import type { IChat } from '@/interface/IChat';
 import type { IRoom } from '@/interface/IRoom';
@@ -69,6 +85,8 @@ const room = ref<IRoom>();
 const chatMessagesRef = ref<HTMLElement | null>(null);
 const chatMessages = ref<IChat[]>([]);
 const message = ref('');
+const opponent = ref<IPlayer>();
+const isReady = ref<boolean>(false);
 
 onMounted(() => {
   socket.emit('get-user-room-info', roomName);
@@ -83,7 +101,19 @@ onUnmounted(() => {
   socket.removeListener('receive-message-in-room');
   socket.removeListener('leave-room-automatically');
   socket.removeListener('room-info');
+  socket.removeListener('room-opponent');
+  socket.removeListener('start-battle-success');
 });
+
+watch(
+  room,
+  () => {
+    socket.emit('get-opponent-in-room', roomName);
+  },
+  {
+    deep: true
+  }
+);
 
 window.addEventListener('load', () => {
   router.push({ name: 'home' });
@@ -125,6 +155,16 @@ const changeRoomPassword = (): void => {
   }
 };
 
+const togglePlayerReady = (): void => {
+  isReady.value = !isReady.value;
+  socket.emit('update-player-room-ready', roomName, isReady.value);
+  socket.emit('get-in-room', roomName);
+};
+
+const startBattle = (): void => {
+  socket.emit('start-battle', roomName);
+};
+
 socket.on('leave-room-success', () => {
   router.replace({ name: 'lobby' });
 });
@@ -152,6 +192,19 @@ socket.on('leave-room-automatically', (name: string) => {
 socket.on('room-info', (iRoom: IRoom) => {
   room.value = iRoom;
 });
+
+socket.on('room-opponent', (iPlayer: IPlayer | undefined) => {
+  opponent.value = iPlayer;
+});
+
+socket.on('start-battle-success', () => {
+  router.push({ name: 'battle' });
+});
 </script>
 
-<style scoped></style>
+<style scoped>
+.custom-flex {
+  justify-content: space-between;
+  align-items: center;
+}
+</style>
